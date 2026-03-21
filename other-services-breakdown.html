@@ -40,6 +40,15 @@
   .legend-count { margin-left: auto; font-size: 0.65rem; color: #475569; font-variant-numeric: tabular-nums; }
   .chart-wrap { flex: 1; background: linear-gradient(135deg, #1e293b 0%, #1a2332 100%); border-radius: 12px; padding: 24px; border: 1px solid rgba(251,191,36,0.06); min-width: 0; }
   canvas { width: 100% !important; }
+  .range-bar { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 14px 18px; background: linear-gradient(135deg, #1e293b 0%, #1a2332 100%); border-radius: 10px; border: 1px solid rgba(251,191,36,0.06); }
+  .range-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; white-space: nowrap; }
+  .range-select { background: #0f172a; color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); border-radius: 6px; padding: 5px 8px; font-size: 0.85rem; font-weight: 600; font-family: inherit; cursor: pointer; appearance: none; -webkit-appearance: none; text-align: center; min-width: 62px; }
+  .range-select:hover { border-color: rgba(251,191,36,0.5); }
+  .range-select:focus { outline: none; border-color: #fbbf24; }
+  .range-track { flex: 1; height: 4px; background: #1e293b; border-radius: 2px; position: relative; }
+  .range-fill { position: absolute; height: 100%; background: rgba(251,191,36,0.4); border-radius: 2px; }
+  .range-reset { background: none; border: 1px solid rgba(100,116,139,0.3); color: #64748b; font-size: 0.7rem; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.2s; }
+  .range-reset:hover { border-color: rgba(251,191,36,0.3); color: #94a3b8; }
   .footer { margin-top: 16px; text-align: right; color: #475569; font-size: 0.75rem; }
 </style>
 </head>
@@ -75,12 +84,19 @@
       <canvas id="chart" height="640"></canvas>
     </div>
   </div>
+  <div class="range-bar">
+    <span class="range-label">Year Range</span>
+    <select id="yearFrom" class="range-select"></select>
+    <div class="range-track"><div class="range-fill" id="rangeFill"></div></div>
+    <select id="yearTo" class="range-select"></select>
+    <button class="range-reset" id="resetBtn">Reset</button>
+  </div>
   <div class="footer">Generated March 2026 &bull; data.lacity.org</div>
 </div>
 <script>
-const labels = ["1996","1997","1998","1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025"];
+const allLabels = ["1996","1997","1998","1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025"];
 
-const catData = {
+const allCatData = {
   "All Other Personal Services": [10,11,18,17,92,121,124,239,311,586,774,1177,1008,1163,1366,1458,1616,2106,2716,3095,2895,2819,3621,3198,2381,2572,4261,3820,1705,1466],
   "Auto Repair & Maintenance": [10,21,20,33,39,61,66,93,96,121,153,200,259,239,270,290,308,351,480,450,532,539,573,600,459,427,645,715,775,747],
   "Beauty & Nail Salons": [38,48,53,56,69,54,70,72,56,57,62,97,147,132,202,215,207,300,306,366,330,380,368,358,220,263,360,420,516,539],
@@ -98,29 +114,17 @@ const catData = {
 };
 
 const colors = [
-  '#ef4444', // All Other Personal - red
-  '#f97316', // Auto Repair - orange
-  '#eab308', // Beauty & Nail - yellow
-  '#84cc16', // Home Repair - lime
-  '#22c55e', // Barber Shops - green
-  '#14b8a6', // Parking - teal
-  '#06b6d4', // Other Personal Care - cyan
-  '#3b82f6', // Laundry - blue
-  '#6366f1', // Pet Care - indigo
-  '#8b5cf6', // Civic & Religious - violet
-  '#a855f7', // Equipment Repair - purple
-  '#d946ef', // Photofinishing - fuchsia
-  '#ec4899', // Private Households - pink
-  '#f43f5e', // Funeral Services - rose
+  '#ef4444','#f97316','#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4','#3b82f6',
+  '#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#f43f5e'
 ];
 
 const ctx = document.getElementById('chart').getContext('2d');
-const catNames = Object.keys(catData);
-const catTotals = catNames.map(n => catData[n].reduce((a, b) => a + b, 0));
+const catNames = Object.keys(allCatData);
+const catTotals = catNames.map(n => allCatData[n].reduce((a, b) => a + b, 0));
 
 const datasets = catNames.map((name, i) => ({
   label: name,
-  data: catData[name],
+  data: allCatData[name].slice(),
   borderColor: colors[i],
   backgroundColor: colors[i],
   fill: false,
@@ -137,14 +141,12 @@ const datasets = catNames.map((name, i) => ({
 
 const chart = new Chart(ctx, {
   type: 'line',
-  data: { labels, datasets },
+  data: { labels: allLabels.slice(), datasets },
   options: {
     responsive: true,
     maintainAspectRatio: false,
-    interaction: {
-      intersect: false,
-      mode: 'index'
-    },
+    animation: { duration: 300 },
+    interaction: { intersect: false, mode: 'index' },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -166,68 +168,87 @@ const chart = new Chart(ctx, {
       annotation: {
         annotations: {
           covid: {
-            type: 'line',
-            xMin: '2020',
-            xMax: '2020',
-            borderColor: 'rgba(248, 113, 113, 0.4)',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            label: {
-              display: true,
-              content: 'COVID-19',
-              position: 'start',
-              backgroundColor: 'rgba(248, 113, 113, 0.15)',
-              color: '#f87171',
-              font: { size: 10 },
-              padding: 4,
-              borderRadius: 4
-            }
+            type: 'line', xMin: '2020', xMax: '2020',
+            borderColor: 'rgba(248, 113, 113, 0.4)', borderWidth: 1, borderDash: [4, 4],
+            label: { display: true, content: 'COVID-19', position: 'start', backgroundColor: 'rgba(248, 113, 113, 0.15)', color: '#f87171', font: { size: 10 }, padding: 4, borderRadius: 4 }
           },
           recession: {
-            type: 'line',
-            xMin: '2008',
-            xMax: '2008',
-            borderColor: 'rgba(248, 113, 113, 0.4)',
-            borderWidth: 1,
-            borderDash: [4, 4],
-            label: {
-              display: true,
-              content: 'Great Recession',
-              position: 'start',
-              backgroundColor: 'rgba(248, 113, 113, 0.15)',
-              color: '#f87171',
-              font: { size: 10 },
-              padding: 4,
-              borderRadius: 4
-            }
+            type: 'line', xMin: '2008', xMax: '2008',
+            borderColor: 'rgba(248, 113, 113, 0.4)', borderWidth: 1, borderDash: [4, 4],
+            label: { display: true, content: 'Great Recession', position: 'start', backgroundColor: 'rgba(248, 113, 113, 0.15)', color: '#f87171', font: { size: 10 }, padding: 4, borderRadius: 4 }
           }
         }
       }
     },
     scales: {
       x: {
-        ticks: {
-          color: '#64748b',
-          font: { size: 11 },
-          callback: function(val, idx) {
-            const yr = parseInt(labels[idx]);
-            return yr % 5 === 0 ? labels[idx] : '';
-          }
-        },
+        ticks: { color: '#64748b', font: { size: 11 }, callback: function(val, idx) { return this.getLabelForValue(val); } },
         grid: { color: 'rgba(100,116,139,0.1)' }
       },
       y: {
         beginAtZero: true,
-        ticks: {
-          color: '#64748b',
-          font: { size: 11 },
-          callback: v => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v
-        },
+        ticks: { color: '#64748b', font: { size: 11 }, callback: v => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v },
         grid: { color: 'rgba(100,116,139,0.1)' }
       }
     }
   }
 });
+
+// Year range controls
+const fromSel = document.getElementById('yearFrom');
+const toSel = document.getElementById('yearTo');
+const fillEl = document.getElementById('rangeFill');
+const resetBtn = document.getElementById('resetBtn');
+
+allLabels.forEach(y => {
+  fromSel.add(new Option(y, y));
+  toSel.add(new Option(y, y));
+});
+fromSel.value = allLabels[0];
+toSel.value = allLabels[allLabels.length - 1];
+
+function updateFill() {
+  const fi = allLabels.indexOf(fromSel.value);
+  const ti = allLabels.indexOf(toSel.value);
+  const pct0 = (fi / (allLabels.length - 1)) * 100;
+  const pct1 = (ti / (allLabels.length - 1)) * 100;
+  fillEl.style.left = pct0 + '%';
+  fillEl.style.width = (pct1 - pct0) + '%';
+}
+
+function applyRange() {
+  const fi = allLabels.indexOf(fromSel.value);
+  const ti = allLabels.indexOf(toSel.value);
+  if (fi > ti) return;
+
+  const slicedLabels = allLabels.slice(fi, ti + 1);
+  chart.data.labels = slicedLabels;
+  catNames.forEach((name, i) => {
+    chart.data.datasets[i].data = allCatData[name].slice(fi, ti + 1);
+  });
+
+  const ann = chart.options.plugins.annotation.annotations;
+  ann.covid.display = slicedLabels.includes('2020');
+  ann.recession.display = slicedLabels.includes('2008');
+
+  chart.update();
+  updateFill();
+}
+
+fromSel.addEventListener('change', () => {
+  if (parseInt(fromSel.value) > parseInt(toSel.value)) toSel.value = fromSel.value;
+  applyRange();
+});
+toSel.addEventListener('change', () => {
+  if (parseInt(toSel.value) < parseInt(fromSel.value)) fromSel.value = toSel.value;
+  applyRange();
+});
+resetBtn.addEventListener('click', () => {
+  fromSel.value = allLabels[0];
+  toSel.value = allLabels[allLabels.length - 1];
+  applyRange();
+});
+updateFill();
 
 // Build left-side vertical legend
 const legendEl = document.getElementById('legend');
