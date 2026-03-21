@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LA New Business Registrations by Sector</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-annotation/3.0.1/chartjs-plugin-annotation.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; padding: 32px; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .header { margin-bottom: 28px; }
+  h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; color: #f8fafc; letter-spacing: -0.02em; }
+  .subtitle { color: #94a3b8; font-size: 0.85rem; line-height: 1.5; }
+  .subtitle a { color: #94a3b8; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat { background: linear-gradient(135deg, #1e293b 0%, #1a2332 100%); border-radius: 10px; padding: 16px 18px; border: 1px solid rgba(251,191,36,0.08); }
+  .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; }
+  .stat-value { font-size: 1.5rem; font-weight: 700; margin-top: 6px; }
+  .stat-sub { font-size: 0.7rem; color: #64748b; margin-top: 2px; }
+  .amber { color: #fbbf24; }
+  .main-area { display: flex; gap: 20px; }
+  .legend-panel {
+    flex: 0 0 200px;
+    background: linear-gradient(135deg, #1e293b 0%, #1a2332 100%);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid rgba(251,191,36,0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-self: flex-start;
+  }
+  .legend-title { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 500; margin-bottom: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: #94a3b8; cursor: pointer; transition: opacity 0.2s; padding: 3px 0; }
+  .legend-item:hover { color: #e2e8f0; }
+  .legend-item.hidden { opacity: 0.25; }
+  .legend-swatch { width: 16px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  .legend-count { margin-left: auto; font-size: 0.65rem; color: #475569; font-variant-numeric: tabular-nums; }
+  .chart-wrap { flex: 1; background: linear-gradient(135deg, #1e293b 0%, #1a2332 100%); border-radius: 12px; padding: 24px; border: 1px solid rgba(251,191,36,0.06); min-width: 0; }
+  canvas { width: 100% !important; }
+  .footer { margin-top: 16px; text-align: right; color: #475569; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>New Business Registrations by Sector</h1>
+    <p class="subtitle">Annual new registrations by NAICS sector, 1996&ndash;2025 &bull; 608,940 classified businesses across 21 sectors &bull; Source: City of LA Open Data Portal <a href="https://data.lacity.org/Administration-Finance/Listing-of-All-Businesses/r4uk-afju" target="_blank">data.lacity.org/resource/r4uk-afju</a></p>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Largest Sector</div>
+      <div class="stat-value amber">Professional Svcs</div>
+      <div class="stat-sub">83,939 total registrations</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Fastest Growing</div>
+      <div class="stat-value amber">Construction</div>
+      <div class="stat-sub">477 (1996) &rarr; 3,528 (2025), +640%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Biggest Post-COVID Surge</div>
+      <div class="stat-value amber">Other Services</div>
+      <div class="stat-sub">3,995 (2020) &rarr; 6,641 (2022), +66%</div>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="legend-panel">
+      <div class="legend-title">Sectors (click to toggle)</div>
+      <div id="legend"></div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart" height="640"></canvas>
+    </div>
+  </div>
+  <div class="footer">Generated March 2026 &bull; data.lacity.org</div>
+</div>
+<script>
+const labels = ["1996","1997","1998","1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025"];
+
+const sectorData = {
+  "Professional Services": [399,681,580,1014,1127,1363,1335,1269,1341,1558,1781,2534,2506,2845,2741,2755,2804,3039,3550,4526,4189,4058,4590,4231,3805,4085,5314,5394,4813,4202],
+  "Other Services": [137,228,236,317,347,465,482,670,818,1107,1443,2150,2120,2324,2554,2494,2618,3114,4089,4809,4611,4716,5549,5231,3995,4294,6641,6199,4385,4089],
+  "Retail Trade": [677,813,792,1021,1041,1404,1460,1710,1641,1081,1105,1457,1606,1903,1746,1712,1861,1981,2523,2859,2752,2975,2986,3125,3689,3650,4031,4013,3941,3557],
+  "Real Estate": [805,931,904,1163,1220,1160,1509,1762,2553,1549,1565,1728,1591,1503,1646,1723,1999,1998,2457,2735,2610,2735,2736,3050,2272,3011,2601,1965,1855,1639],
+  "Construction": [477,535,649,845,772,1007,998,1068,1147,916,1099,1398,1372,1574,1514,1464,1520,1632,1813,2327,2403,2781,3235,3658,2789,3053,3796,3593,3631,3528],
+  "Arts & Entertainment": [120,177,132,188,231,262,227,339,483,684,865,1441,1345,1450,1532,1545,1712,1915,2453,2989,2908,2786,3683,3130,2541,2583,3493,2888,2619,2344],
+  "Admin & Support": [395,678,666,1489,1276,1493,1272,1521,1524,816,1054,1283,1127,1319,1299,1262,1546,1695,1815,1931,1686,1590,1716,1812,1216,1324,2037,1852,1687,1539],
+  "Health Care": [261,328,305,364,379,481,494,577,557,525,586,1019,941,1086,1142,1061,1066,1227,1474,1857,1619,1713,1832,2030,2144,2225,2534,2437,2523,2406],
+  "Wholesale Trade": [610,757,690,710,788,841,824,854,836,422,472,871,984,1044,1023,926,1020,945,1120,1323,1324,1261,1402,1425,1243,1133,1188,1331,1486,1105],
+  "Information": [120,171,159,231,286,342,319,344,474,472,559,813,820,732,817,922,928,1009,1258,1610,1641,1447,1629,1474,1162,1352,1755,1431,1035,809],
+  "Manufacturing": [79,123,110,154,163,185,248,307,308,338,495,666,879,1100,1046,929,1079,1074,1326,1477,1359,1293,1272,1412,1083,1064,1108,1096,1203,1159],
+  "Food & Accommodation": [157,195,232,246,239,296,332,420,403,263,312,518,574,584,601,621,595,583,797,1039,1118,1302,1273,1449,1290,1358,1589,1875,2290,2171],
+  "Finance & Insurance": [24,76,71,114,120,126,151,152,187,217,226,277,320,283,302,274,301,327,354,434,392,468,450,414,375,470,437,395,340,302],
+  "Transportation": [20,27,39,44,49,86,88,75,81,93,90,121,114,134,140,129,146,160,224,325,397,368,469,499,511,530,717,629,449,479],
+  "Education": [52,96,74,112,95,103,111,102,137,133,133,229,256,218,236,250,243,228,300,333,323,317,299,334,327,324,444,414,535,580],
+  "Warehousing": [11,10,10,17,12,26,31,59,222,93,117,101,150,107,141,147,146,174,214,284,252,242,299,255,287,273,575,551,198,274],
+  "Agriculture & Forestry": [2,1,1,6,5,12,12,17,10,29,22,51,75,112,48,86,93,82,91,82,54,62,95,69,79,108,91,77,91,68],
+  "Mining & Oil/Gas": [0,1,1,0,1,0,0,1,2,2,4,2,7,14,5,2,9,7,6,1,7,4,7,5,5,15,32,18,16,12],
+  "Mgmt of Companies": [0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,4,3,3,5,19,12],
+  "Utilities": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,2,3,18,4],
+  "Public Admin": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,4,3,1,9,6]
+};
+
+// 21 rainbow-spectrum colors, maximally distinct
+const colors = [
+  '#ef4444', // Professional Services - red
+  '#f97316', // Other Services - orange
+  '#eab308', // Retail Trade - yellow
+  '#84cc16', // Real Estate - lime
+  '#22c55e', // Construction - green
+  '#14b8a6', // Arts & Entertainment - teal
+  '#06b6d4', // Admin & Support - cyan
+  '#3b82f6', // Health Care - blue
+  '#6366f1', // Wholesale Trade - indigo
+  '#8b5cf6', // Information - violet
+  '#a855f7', // Manufacturing - purple
+  '#d946ef', // Food & Accommodation - fuchsia
+  '#ec4899', // Finance & Insurance - pink
+  '#f43f5e', // Transportation - rose
+  '#fb923c', // Education - light orange
+  '#fbbf24', // Warehousing - amber
+  '#a3e635', // Agriculture - bright lime
+  '#2dd4bf', // Mining - bright teal
+  '#38bdf8', // Mgmt of Companies - sky blue
+  '#c084fc', // Utilities - light purple
+  '#f0abfc', // Public Admin - light fuchsia
+];
+
+const ctx = document.getElementById('chart').getContext('2d');
+const sectorNames = Object.keys(sectorData);
+const sectorTotals = sectorNames.map(n => sectorData[n].reduce((a, b) => a + b, 0));
+
+const datasets = sectorNames.map((name, i) => ({
+  label: name,
+  data: sectorData[name],
+  borderColor: colors[i],
+  backgroundColor: colors[i],
+  fill: false,
+  tension: 0.3,
+  pointRadius: 0,
+  pointHoverRadius: 5,
+  pointBackgroundColor: colors[i],
+  pointBorderColor: '#0f172a',
+  pointBorderWidth: 2,
+  pointHoverBorderColor: '#fff',
+  pointHoverBorderWidth: 2,
+  borderWidth: 2
+}));
+
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels, datasets },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      intersect: false,
+      mode: 'index'
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        titleColor: '#fbbf24',
+        bodyColor: '#e2e8f0',
+        borderColor: 'rgba(251, 191, 36, 0.3)',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 12 },
+        itemSort: (a, b) => b.parsed.y - a.parsed.y,
+        callbacks: {
+          title: ctx => ctx[0].label,
+          label: ctx => {
+            const val = ctx.parsed.y.toLocaleString();
+            return ' ' + ctx.dataset.label + ':  ' + val;
+          }
+        }
+      },
+      annotation: {
+        annotations: {
+          covid: {
+            type: 'line',
+            xMin: '2020',
+            xMax: '2020',
+            borderColor: 'rgba(248, 113, 113, 0.4)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            label: {
+              display: true,
+              content: 'COVID-19',
+              position: 'start',
+              backgroundColor: 'rgba(248, 113, 113, 0.15)',
+              color: '#f87171',
+              font: { size: 10 },
+              padding: 4,
+              borderRadius: 4
+            }
+          },
+          recession: {
+            type: 'line',
+            xMin: '2008',
+            xMax: '2008',
+            borderColor: 'rgba(248, 113, 113, 0.4)',
+            borderWidth: 1,
+            borderDash: [4, 4],
+            label: {
+              display: true,
+              content: 'Great Recession',
+              position: 'start',
+              backgroundColor: 'rgba(248, 113, 113, 0.15)',
+              color: '#f87171',
+              font: { size: 10 },
+              padding: 4,
+              borderRadius: 4
+            }
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: '#64748b',
+          font: { size: 11 },
+          callback: function(val, idx) {
+            const yr = parseInt(labels[idx]);
+            return yr % 5 === 0 ? labels[idx] : '';
+          }
+        },
+        grid: { color: 'rgba(100,116,139,0.1)' }
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: '#64748b',
+          font: { size: 11 },
+          callback: v => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v
+        },
+        grid: { color: 'rgba(100,116,139,0.1)' }
+      }
+    }
+  }
+});
+
+// Build left-side vertical legend
+const legendEl = document.getElementById('legend');
+const hiddenSets = new Set();
+
+function formatTotal(n) {
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return n.toString();
+}
+
+datasets.forEach((ds, i) => {
+  const item = document.createElement('div');
+  item.className = 'legend-item';
+  item.innerHTML =
+    '<span class="legend-swatch" style="background:' + ds.borderColor + '"></span>' +
+    '<span>' + ds.label + '</span>' +
+    '<span class="legend-count">' + formatTotal(sectorTotals[i]) + '</span>';
+  item.addEventListener('click', () => {
+    if (hiddenSets.has(i)) {
+      hiddenSets.delete(i);
+      chart.show(i);
+      item.classList.remove('hidden');
+    } else {
+      hiddenSets.add(i);
+      chart.hide(i);
+      item.classList.add('hidden');
+    }
+  });
+  legendEl.appendChild(item);
+});
+</script>
+</body>
+</html>
