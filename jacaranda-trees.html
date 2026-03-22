@@ -81,18 +81,6 @@ map.on('zoomend', () => {
   markers.forEach(m => m.setRadius(r).setStyle({ fillOpacity: fo }));
 });
 
-// Info panel
-const infoDiv = document.createElement('div');
-infoDiv.className = 'info-panel';
-infoDiv.innerHTML = `
-  <div class="info-label">Jacaranda Trees</div>
-  <div class="info-val">13,168</div>
-  <div class="info-sub">mapped street trees</div>
-  <div class="info-label">Scientific Name</div>
-  <div class="info-sub" style="font-style:italic;color:#c4b5fd">Jacaranda mimosifolia</div>
-  <div class="info-note">Native to South America. Famous for blanketing LA streets in purple blossoms each May&ndash;June. Data from the 1990s LA Street Tree Inventory &mdash; the most comprehensive public tree census of the city.</div>
-`;
-document.getElementById('map').appendChild(infoDiv);
 </script>
 </body>
 </html>
