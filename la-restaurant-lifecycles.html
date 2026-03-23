@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LA Restaurant Lifecycles</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0f172a; color:#e2e8f0; }
+
+  .top-bar { padding:20px 32px 12px; }
+  h1 { font-size:1.5rem; font-weight:700; color:#f8fafc; letter-spacing:-0.02em; font-family:'Lora',Georgia,'Times New Roman',serif; }
+  h1 span { color:#fbbf24; }
+  .subtitle { color:#94a3b8; font-size:0.78rem; margin-top:4px; line-height:1.4; }
+
+  .controls { padding:0 32px 12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .filter-btn {
+    padding:4px 10px; border-radius:5px; border:1px solid rgba(251,191,36,0.3);
+    background:transparent; color:#94a3b8; font-size:0.7rem; cursor:pointer;
+    font-family:inherit; transition:all 0.2s;
+  }
+  .filter-btn.active { background:rgba(251,191,36,0.15); color:#fbbf24; border-color:rgba(251,191,36,0.5); }
+  .filter-btn:hover { border-color:rgba(251,191,36,0.5); color:#fbbf24; }
+  .sort-label { color:#64748b; font-size:0.7rem; margin-left:12px; }
+  .count-label { color:#64748b; font-size:0.7rem; margin-left:auto; }
+
+  .chart-area {
+    padding:0 32px 32px;
+    overflow-y:auto;
+    max-height:calc(100vh - 170px);
+  }
+
+  .timeline-row {
+    display:flex; align-items:center; height:22px; margin:1px 0;
+    position:relative;
+  }
+  .row-label {
+    width:170px; min-width:170px; font-size:0.62rem; color:#94a3b8;
+    text-align:right; padding-right:10px; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .row-track {
+    flex:1; position:relative; height:16px;
+  }
+  .bar {
+    position:absolute; height:12px; top:2px; border-radius:2px;
+    cursor:pointer; transition:opacity 0.15s;
+    display:flex; align-items:center;
+    border-right:2px solid #ef4444;
+    opacity:0.8;
+  }
+  .bar:hover { opacity:1 !important; filter:brightness(1.2); }
+
+  .bar-label {
+    font-size:0.5rem; color:#0f172a; font-weight:600; padding:0 3px;
+    white-space:nowrap; overflow:hidden; pointer-events:none;
+  }
+  .announce-line {
+    position:absolute; height:12px; top:2px; width:1px;
+    background:rgba(253,224,71,0.6); pointer-events:none;
+  }
+
+  .year-axis {
+    display:flex; align-items:center; height:24px; margin-bottom:6px;
+  }
+  .year-axis .row-label { color:transparent; }
+  .year-axis .row-track { position:relative; border-bottom:1px solid #1e293b; }
+  .year-tick {
+    position:absolute; bottom:0; font-size:0.58rem; color:#475569;
+    transform:translateX(-50%);
+  }
+  .year-line {
+    position:absolute; top:0; bottom:0; width:1px; background:#1e293b;
+  }
+
+  .tooltip {
+    position:fixed; z-index:9999; display:none;
+    background:rgba(15,23,42,0.97); border:1px solid rgba(251,191,36,0.3);
+    border-radius:8px; padding:10px 14px; font-size:0.78rem;
+    box-shadow:0 8px 24px rgba(0,0,0,0.5); max-width:300px;
+    pointer-events:none;
+  }
+  .tooltip .tt-name { color:#fbbf24; font-weight:700; }
+  .tooltip .tt-years { color:#e2e8f0; margin-top:4px; }
+  .tooltip .tt-note { color:#94a3b8; font-size:0.7rem; margin-top:4px; }
+  .tooltip .tt-lifespan { color:#64748b; font-size:0.7rem; margin-top:3px; }
+
+  .legend { display:flex; gap:14px; padding:6px 32px 4px; flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:0.65rem; color:#64748b; }
+  .legend-swatch { width:16px; height:8px; border-radius:2px; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>The <span>Life and Death</span> of an LA Restaurant</h1>
+  <p class="subtitle">A decade of Eater LA's saddest closures (2016–2025) &bull; Horizontal bars show each restaurant's lifespan &bull; Source: Eater LA year-in-review</p>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#94a3b8; border-right:2px solid #94a3b8"></div> Lifespan</div>
+  <div class="legend-item"><div style="width:1px;height:10px;background:rgba(253,224,71,0.6)"></div> Announced</div>
+</div>
+
+<div class="controls">
+  <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+  <button class="filter-btn" data-filter="2016" onclick="setFilter('2016')">2016</button>
+  <button class="filter-btn" data-filter="2017" onclick="setFilter('2017')">2017</button>
+  <button class="filter-btn" data-filter="2018" onclick="setFilter('2018')">2018</button>
+  <button class="filter-btn" data-filter="2019" onclick="setFilter('2019')">2019</button>
+  <button class="filter-btn" data-filter="2020" onclick="setFilter('2020')">2020</button>
+  <button class="filter-btn" data-filter="2021" onclick="setFilter('2021')">2021</button>
+  <button class="filter-btn" data-filter="2022" onclick="setFilter('2022')">2022</button>
+  <button class="filter-btn" data-filter="2023" onclick="setFilter('2023')">2023</button>
+  <button class="filter-btn" data-filter="2024" onclick="setFilter('2024')">2024</button>
+  <button class="filter-btn" data-filter="2025" onclick="setFilter('2025')">2025</button>
+  <button class="filter-btn" data-filter="institution" onclick="setFilter('institution')">20+ Years</button>
+  <button class="filter-btn" data-filter="fire" onclick="setFilter('fire')">Wildfire</button>
+  <span class="sort-label">Sort:</span>
+  <button class="filter-btn active" id="sort-open" onclick="setSort('opened')">By opening</button>
+  <button class="filter-btn" id="sort-life" onclick="setSort('lifespan')">By lifespan</button>
+  <button class="filter-btn" id="sort-close" onclick="setSort('closed')">By closing</button>
+  <span class="count-label" id="count-label"></span>
+</div>
+
+<div class="chart-area" id="chart"></div>
+
+<div class="tooltip" id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-years" id="tt-years"></div>
+  <div class="tt-note" id="tt-note"></div>
+  <div class="tt-lifespan" id="tt-lifespan"></div>
+</div>
+
+<script>
+// [name, opened, closed, note, tags[], announced (optional)]
+const R = [
+  // ===== 2016 =====
+  ["Border Grill SM", 1990, 2016, "Santa Monica, Susan Feniger & Mary Sue Milliken, 26 years", []],
+  ["The Hungry Cat SM", 2011, 2016, "Santa Monica seafood, David Lentz", []],
+  ["Joe's Restaurant", 1991, 2016, "Venice, fine dining legend, almost 25 years", ["institution"]],
+  ["Maison Giraud", 2012, 2016, "Pacific Palisades, French bistro, lost to development", []],
+  ["Corazon y Miel", 2012, 2016, "Bell, modern Mexican, chef Eddie Ruiz", []],
+  ["Skooby's Hot Dogs", 1972, 2016, "Hollywood Blvd icon, Walk of Fame landmark", ["institution"]],
+  ["TiGeorges' Chicken", 2002, 2016, "Haitian, Echo Park, best Haitian in the city", []],
+  ["Superba Snack Bar", 2013, 2016, "Venice, helped define Rose Ave dining scene", []],
+  ["Scarpetta BH", 2013, 2016, "Beverly Hills, Scott Conant Italian", []],
+  ["Knuckle & Claw", 2015, 2016, "Silver Lake + Santa Monica, lobster rolls", []],
+  ["Butchers & Barbers", 2015, 2016, "Hollywood, Houston brothers", []],
+  ["Moruno OFM", 2015, 2016, "Original Farmers Market, Spanish fare", []],
+
+  // ===== 2017 =====
+  ["Simbal", 2016, 2017, "Little Tokyo, modern Southeast Asian", []],
+  ["Pok Pok LA", 2015, 2017, "Chinatown, Andy Ricker, Thai", [], 2014],
+  ["Canele", 2006, 2017, "Atwater Village, beloved brunch, 11 years", []],
+  ["Bouchon BH", 2004, 2017, "Beverly Hills, Thomas Keller, fine dining", [], 2003],
+  ["BLD", 2007, 2017, "Beverly Blvd, Neal Fraser, 10 years", []],
+  ["Picca", 2011, 2017, "Pico Blvd, Ricardo Zarate, Peruvian", []],
+  ["Gill's Ice Cream", 1935, 2017, "Original Farmers Market, 82 years", ["institution"]],
+  ["Auntie Em's", 2002, 2017, "Eagle Rock, brunch & pie, 15 years", []],
+  ["Birch", 2014, 2017, "Hollywood, Brendan Collins, British pub", []],
+  ["Tacos Punta Cabras", 2012, 2017, "Santa Monica, Mexican, pushed out", []],
+
+  // ===== 2018 =====
+  ["Irv's Burgers", 1946, 2018, "Route 66 icon, 72 years", ["institution"]],
+  ["Baroo", 2015, 2018, "Hollywood, Kwang Uh, fermentation-forward Korean", []],
+  ["Valentino", 1972, 2018, "Santa Monica, Piero Selvaggio, iconic Italian, 46 years", ["institution"]],
+  ["Locol", 2016, 2018, "Watts, Roy Choi & Daniel Patterson, do-good fast food", [], 2015],
+  ["Good Girl Dinette", 2009, 2018, "Highland Park, Vietnamese, 9 years", []],
+  ["Tom Bergin's", 1935, 2018, "Mid-City, Irish pub, oldest liquor license, 83 years", ["institution"]],
+  ["Loteria Grill OFM", 2002, 2018, "Original Farmers Market, Jimmy Shaw, Mexican, 16 years", []],
+  ["Bigmista's", 2010, 2018, "Long Beach, BBQ, landlord issues", []],
+
+  // ===== 2019 =====
+  ["Hearth & Hound", 2017, 2019, "Hollywood, April Bloomfield, sexual harassment scandal", [], 2016],
+  ["Simone", 2018, 2019, "Arts District, <6 months, scathing review & infighting", [], 2017],
+  ["Paru's Indian", 1979, 2019, "East Hollywood, South Indian vegetarian, 40 years", ["institution"]],
+  ["Good Luck Bar", 1994, 2019, "Los Feliz, kitschy dive bar, 25 years", ["institution"]],
+  ["Cork Bar & Grill", 1945, 2019, "West Adams, Cab Calloway & Ella Fitzgerald haunt", ["institution"]],
+  ["Rice Bar", 2015, 2019, "DTLA, Filipino, Charles Olalia, 7 seats", []],
+  ["Kura Sushi", 2002, 2019, "Little Tokyo, omakase, Tsukiji fish", []],
+  ["Corky's", 1959, 2019, "Sherman Oaks, Googie-style diner, 60 years", ["institution"]],
+  ["Tartine LA", 2018, 2019, "Row DTLA, Bay Area import, <1 year", [], 2017],
+  ["Fiona", 2018, 2019, "Fairfax, Nicole Rucker, pies & pastry, 9 months", []],
+  ["PYT", 2018, 2019, "Downtown, Josef Centeno, vegetable paradise", []],
+  ["Chego", 2013, 2019, "Chinatown, Roy Choi, cult favorite, 6 years", []],
+  ["Sotto", 2011, 2019, "Pico Blvd, Southern Italian, Essential 38, 8 years", []],
+  ["Jaffa", 2017, 2019, "West Third St, modern Middle Eastern", []],
+  ["Native", 2017, 2019, "Santa Monica, Nyesha Arrington, 18 months", []],
+
+  // ===== 2020 (COVID) =====
+  ["Pacific Dining Car", 1921, 2020, "Downtown/SM, 24-hour steakhouse, 99 years", ["institution"]],
+  ["Bon Temps", 2019, 2020, "Arts District, Lincoln Carson, stellar debut year", [], 2018],
+  ["B\u00e4co Mercat", 2011, 2020, "DTLA, Josef Centeno, genre-defining", []],
+  ["Broken Spanish", 2015, 2020, "DTLA, Ray Garcia, modern Mexican", [], 2014],
+  ["Jun Won", 2017, 2020, "Koreatown, Korean fine dining", []],
+  ["Button Mash", 2016, 2020, "Echo Park, arcade + bar food", [], 2015],
+  ["Cliff's Edge", 2004, 2020, "Silver Lake, treehouse patio, 16 years", []],
+  ["Beverly Soon Tofu", 1986, 2020, "Koreatown, iconic tofu house, 34 years", ["institution"]],
+  ["Dong Il Jang", 1975, 2020, "Koreatown, iconic Korean, 45 years", ["institution"]],
+  ["Nak Won", 1974, 2020, "Koreatown, Korean institution", ["institution"]],
+  ["Beijing Pie House", 2012, 2020, "Chinatown, legendary meat pies", []],
+  ["Dialogue", 2017, 2020, "Santa Monica, Dave Beran, tasting menu", [], 2016],
+  ["Auburn", 2018, 2020, "Melrose, fine dining, Eric Bost", [], 2017],
+  ["Somni", 2018, 2020, "SLS Beverly Hills, avant-garde, Aitor Zabala", [], 2017],
+  ["Ma'am Sir", 2018, 2020, "Silver Lake, Filipino, Charles Olalia", []],
+
+  // ===== 2021 =====
+  ["Spoon by H", 2017, 2021, "Fairfax, Korean comfort, scammed by customers", []],
+  ["Oil Can Harry's", 1968, 2021, "Studio City, country-western queer bar, 53 years", ["institution"]],
+  ["Tattle Tale Room", 1963, 2021, "Culver City, beloved dive bar, 58 years", ["institution"]],
+  ["Barcito", 2018, 2021, "Echo Park, kept staff healthcare through pandemic", []],
+  ["Belcampo", 2015, 2021, "Multiple locations, butcher-restaurant, lying scandal", []],
+  ["M. Georgina", 2019, 2021, "Downtown, fine dining", []],
+
+  // ===== 2022 =====
+  ["Hotville Chicken", 2020, 2022, "Baldwin Hills, Kim Prince, original Nashville hot chicken family", []],
+  ["Kiriko", 2000, 2022, "Sawtelle, Ken Namba, beloved sushi, 22 years", ["institution"]],
+  ["Big Jo", 1957, 2022, "Santa Monica, Korean American sisters, 65 years", ["institution"]],
+  ["James Beach", 1996, 2022, "Venice, queer space, 26 years", ["institution"]],
+  ["APL", 2018, 2022, "Hollywood, steakhouse, closed Jan", []],
+  ["Caboco", 2021, 2022, "Arts District, modern Brazilian, <1 year", [], 2020],
+  ["MILK", 2007, 2022, "Beverly/Fairfax, ice cream & sandwiches, 15 years", []],
+  ["Conservatory", 2019, 2022, "West Hollywood, intricate cooking", []],
+
+  // ===== 2023 =====
+  ["Animal", 2008, 2023, "Fairfax, Shook & Dotolo, reshaped LA dining, 15 years", [], 2007],
+  ["Woodspoon", 2006, 2023, "Downtown, Brazilian, Natalia Pereira, 17 years", []],
+  ["Cafe Tropical", 1975, 2023, "Silver Lake, Cuban institution, 48 years", ["institution"]],
+  ["Shabu Shabu House", 1991, 2023, "Little Tokyo, first in America, 32 years", ["institution"]],
+  ["Diamond Bakery", 1946, 2023, "Fairfax, Jewish bakery, 77 years", ["institution"]],
+  ["Overland Cafe", 1973, 2023, "Palms, jazzy dinners, 50 years", ["institution"]],
+  ["Marco's", 1993, 2023, "West Hollywood, Italian trattoria, 30 years", ["institution"]],
+  ["El Cochinito", 1988, 2023, "Echo Park, Cuban, 35 years", ["institution"]],
+  ["Craft LA", 2006, 2023, "Century City, Tom Colicchio, 17 years", []],
+  ["K-Zo", 2006, 2023, "Culver City, Japanese sushi, 17 years", []],
+  ["Angler LA", 2019, 2023, "Beverly Center, Joshua Skenes, seafood, 4 years", [], 2018],
+  ["Angry Egret Dinette", 2021, 2023, "Chinatown, Wes Avila, James Beard finalist", []],
+  ["Petty Cash", 2013, 2023, "Beverly Blvd, Walter Manzke, modern Mexican, 10 years", []],
+  ["The Palm BH", 2014, 2023, "Beverly Hills, power lunch steakhouse, 9 years", []],
+  ["Pump", 2013, 2023, "West Hollywood, Lisa Vanderpump, 10 years", []],
+  ["Tallula's", 2017, 2023, "Santa Monica, Rustic Canyon group, Mexican, 6 years", []],
+  ["Taco Mar\u00eda", 2013, 2023, "Costa Mesa, Michelin-starred modern Mexican, 10 years", [], 2012],
+  ["Sari Sari Store", 2017, 2023, "Grand Central Market, Margarita Manzke, Filipino", []],
+  ["Sotto", 2011, 2023, "Pico Blvd, Neapolitan pizza, reopened then closed again", []],
+  ["Nickel Diner", 2008, 2023, "Downtown, maple bacon doughnut, 15 years", []],
+  ["Best Bet", 2023, 2023, "Culver City, opened & closed same year, 5 months", []],
+  ["Needle", 2019, 2023, "Silver Lake, Cantonese, Ryan Wong, 4 years", []],
+  ["Swift Cafe", 2019, 2023, "Leimert Park, countering fast food in South LA", []],
+  ["Etta LA", 2021, 2023, "Culver City, Chicago Italian import", []],
+  ["Kinn", 2021, 2023, "Koreatown, modern Korean tasting menu, 2 years", []],
+  ["Cassell's DTLA", 2018, 2023, "Hotel Normandie, burgers, 5 years", []],
+
+  // ===== 2024 =====
+  ["All Day Baby", 2018, 2024, "Silver Lake, Lien Ta, chef Jonathan Whitener died", [], 2017],
+  ["Alimento", 2014, 2024, "Silver Lake, Zach Pollack, neighborhood Italian, 10 years", []],
+  ["Patrick's Roadhouse", 1973, 2024, "Santa Monica, PCH icon, 51 years", ["institution"]],
+  ["Son of a Gun", 2012, 2024, "West Hollywood, Shook & Dotolo, shrimp toast, 12 years", []],
+  ["Otium", 2015, 2024, "Downtown, Timothy Hollingsworth, Broad museum, gorgeous space", [], 2014],
+  ["Maude", 2014, 2024, "Beverly Hills, Curtis Stone, ambitious fine dining, 10 years", []],
+  ["Manzke", 2019, 2024, "Thai Town, Walter & Margarita Manzke, potential multi-star", [], 2018],
+  ["The Rose Venice", 2014, 2024, "Venice, Jason Neroni, daytime favorite, 10 years", []],
+  ["Poltergeist", 2022, 2024, "Echo Park, one-of-a-kind, Jimi Hendrix of restaurants", []],
+  ["Oto\u00f1o", 2018, 2024, "Highland Park, Teresa Montano, Spanish", []],
+  ["The Dragon", 1982, 2024, "Koreatown, community hub for Korean Americans, 42 years", ["institution"]],
+  ["Mel's Fish Shack", 2011, 2024, "West Adams, neighborhood staple, 13 years", []],
+  ["Banh Oui", 2017, 2024, "Highland Park, Vietnamese sandwiches", []],
+  ["Jewel", 2022, 2024, "closed 2024", []],
+
+  // ===== 2025 =====
+  ["The Original Pantry", 1924, 2025, "Downtown diner, 101 years, union dispute", ["institution"]],
+  ["Fox's", 1947, 2025, "Altadena cafe, destroyed by Eaton fire", ["institution", "fire"]],
+  ["Papa Cristo's", 1948, 2025, "Pico-Union Greek, 77-year family operation", ["institution"]],
+  ["Rancho Bar", 1955, 2025, "Altadena dive bar, 70+ years, Eaton fire", ["institution", "fire"]],
+  ["Brennan's", 1960, 2025, "Marina del Rey dive bar, turtle races", ["institution"]],
+  ["Guido's", 1975, 2025, "Westside Italian, ~50 years, hosted Sinatra", ["institution"]],
+  ["Mitsuru Sushi", 1976, 2025, "Little Tokyo, 49 years, owners retiring", ["institution"]],
+  ["Le Petit Four", 1981, 2025, "West Hollywood French bistro, 44 years", ["institution"]],
+  ["Chin Chin", 1983, 2025, "WeHo, Chinese chicken salad icon, 42 years", ["institution"]],
+  ["El Mar Azul", 1984, 2025, "Highland Park seafood truck, 41 years", ["institution"]],
+  ["Ham Ji Park", 1985, 2025, "Koreatown Korean, both locations, 40 years", ["institution"]],
+  ["Mandarette", 1985, 2025, "Beverly Grove, Chinese, Cecilia Chiang, 40 years", ["institution"]],
+  ["Moonshadows", 1985, 2025, "Malibu destination, destroyed by Palisades fire", ["institution", "fire"]],
+  ["The Reel Inn", 1986, 2025, "Malibu seafood shack, Palisades fire", ["institution", "fire"]],
+  ["Cholada Thai", 2000, 2025, "Malibu, destroyed by Palisades fire", ["institution", "fire"]],
+  ["Sprinkles Cupcakes", 2005, 2025, "Multiple locations, Candace Nelson, 20 years", ["institution"]],
+  ["Elf Caf\u00e9", 2006, 2025, "Echo Park, caf\u00e9/wine bar, 19 years", []],
+  ["Akasha", 2007, 2025, "Culver City, Indian-influenced, 18 years", []],
+  ["La Grande Orange", 2008, 2025, "Pasadena, modern American, 17 years", []],
+  ["The Den", 2009, 2025, "Sunset Strip, 16-year neighborhood institution", []],
+  ["Guerrilla Tacos", 2012, 2025, "Arts District, Wes Avila, Alta California", []],
+  ["Post & Beam", 2012, 2025, "Baldwin Hills, Southern, James Beard nominee", []],
+  ["Here's Looking at You", 2012, 2025, "Koreatown, reopened after COVID, chef died 2024", []],
+  ["Sun Nong Dan", 2013, 2025, "Koreatown Korean, original location", []],
+  ["Tokyo Fried Chicken", 2013, 2025, "Downtown, Japanese fried chicken", []],
+  ["Cassia", 2015, 2025, "Santa Monica, Southeast Asian, decade-long run", [], 2014],
+  ["Wexler's Deli", 2015, 2025, "Grand Central Market, smoked fish", []],
+  ["Le Petit Paris", 2015, 2025, "Downtown, French, decade run", []],
+  ["Shibumi", 2016, 2025, "Downtown, Michelin-starred Japanese kappo", [], 2015],
+  ["Cosa Buona", 2017, 2025, "Echo Park, red-sauce Italian", []],
+  ["Oriel", 2018, 2025, "Chinatown, French caf\u00e9/wine bar, 7 years", []],
+  ["Birdie G's", 2019, 2025, "Santa Monica, Jeremy Fox", [], 2018],
+  ["Citizen Public Market", 2019, 2025, "Culver City food hall, 6 years", []],
+  ["Father's Office AD", 2020, 2025, "Arts District, gastropub, foot traffic collapse", []],
+  ["Gucci Osteria", 2020, 2025, "Beverly Hills, Massimo Bottura, Michelin-starred", [], 2019],
+  ["A.O.C. Brentwood", 2021, 2025, "Wine bar, damaged by January fires", ["fire"]],
+  ["Cabra", 2022, 2025, "Downtown rooftop, Stephanie Izard, Peruvian", [], 2021],
+  ["Willie Mae's", 2022, 2025, "Venice, New Orleans fried chicken", [], 2021],
+  ["Mother Tongue", 2022, 2025, "Hollywood, Michael Mina, health-forward", [], 2021],
+  ["Bar Chelou", 2023, 2025, "Pasadena, French bistro, fire impact", []],
+  ["Yangban", 2023, 2025, "Downtown Korean, not reopening", []],
+  ["Bar Monette", 2023, 2025, "Santa Monica, closed by January fires", ["fire"]],
+  ["MXO", 2024, 2025, "WeHo, Wes Avila, Mexican steakhouse, under 1 year", []],
+  ["Cobras & Matadors", 2024, 2025, "Melrose, Spanish-LA, owner died 2024", []],
+  ["Burgette", 2024, 2025, "Santa Monica, French burger, fire", ["fire"]],
+  ["Helms Bakery", 2024, 2025, "Culver City, Sang Yoon revival", []],
+  ["Bahr", 2025, 2025, "South-Central, Armenian/Mediterranean, opened & closed same year", []]
+];
+
+const MIN_YEAR = 1920;
+const MAX_YEAR = 2026;
+const RANGE = MAX_YEAR - MIN_YEAR;
+
+let currentFilter = 'all';
+let currentSort = 'opened';
+
+function yearToPercent(y) {
+  return ((y - MIN_YEAR) / RANGE) * 100;
+}
+
+function getColor(closed, tags) {
+  if (tags.includes('fire')) return '#ef4444';
+  if (closed >= 2025) return '#dc2626';
+  if (closed >= 2022) return '#ea580c';
+  if (closed >= 2020) return '#f97316';
+  return '#f59e0b';
+}
+
+function getBorderColor(tags) {
+  if (tags.includes('fire')) return '#fbbf24';
+  return '#ef4444';
+}
+
+function getFiltered() {
+  let data = R.slice();
+  if (currentFilter === 'fire') {
+    data = data.filter(r => r[4].includes('fire'));
+  } else if (currentFilter === 'institution') {
+    data = data.filter(r => r[4].includes('institution'));
+  } else if (/^\d{4}$/.test(currentFilter)) {
+    const yr = parseInt(currentFilter);
+    data = data.filter(r => r[2] === yr);
+  }
+  if (currentSort === 'opened') {
+    data.sort((a, b) => a[1] - b[1]);
+  } else if (currentSort === 'lifespan') {
+    data.sort((a, b) => (b[2] - b[1]) - (a[2] - a[1]));
+  } else {
+    data.sort((a, b) => a[2] - b[2] || a[1] - b[1]);
+  }
+  return data;
+}
+
+function render() {
+  const data = getFiltered();
+  document.getElementById('count-label').textContent = data.length + ' restaurants';
+  const chart = document.getElementById('chart');
+  let html = '';
+
+  // Year axis
+  html += '<div class="year-axis"><div class="row-label"></div><div class="row-track">';
+  for (let y = 1930; y <= 2020; y += 10) {
+    const pct = yearToPercent(y);
+    html += '<div class="year-tick" style="left:' + pct + '%">' + y + '</div>';
+    html += '<div class="year-line" style="left:' + pct + '%;height:' + (data.length * 24 + 40) + 'px"></div>';
+  }
+  html += '</div></div>';
+
+  data.forEach((r, i) => {
+    const name = r[0], opened = r[1], closed = r[2], note = r[3], tags = r[4];
+    const announced = r[5] || null;
+    const lifespan = closed - opened;
+    const barLeft = yearToPercent(opened);
+    const barWidth = yearToPercent(closed) - barLeft;
+    const color = getColor(closed, tags);
+    const borderColor = getBorderColor(tags);
+
+    html += '<div class="timeline-row">';
+    html += '<div class="row-label" title="' + name + '">' + name + '</div>';
+    html += '<div class="row-track">';
+    // Announcement line
+    if (announced && announced < opened) {
+      const annPct = yearToPercent(announced);
+      html += '<div class="announce-line" style="left:' + annPct + '%"></div>';
+    }
+    html += '<div class="bar" style="left:' + barLeft + '%;width:' + Math.max(barWidth, 0.35) + '%;background:#94a3b8;border-right-color:#94a3b8" data-idx="' + i + '">';
+    if (barWidth > 5) html += '<span class="bar-label">' + lifespan + 'y</span>';
+    html += '</div></div></div>';
+  });
+
+  chart.innerHTML = html;
+
+  chart.querySelectorAll('.bar[data-idx]').forEach(bar => {
+    bar.addEventListener('mouseenter', e => {
+      const d = data[parseInt(bar.dataset.idx)];
+      const lifespan = d[2] - d[1];
+      document.getElementById('tt-name').textContent = d[0];
+      const annStr = d[5] ? 'Announced ' + d[5] + ' \u00b7 ' : '';
+      document.getElementById('tt-years').textContent = annStr + 'Opened ' + d[1] + ' \u00b7 Closed ' + d[2];
+      document.getElementById('tt-note').textContent = d[3];
+      const extra = d[4].includes('fire') ? ' \u00b7 \ud83d\udd25 Wildfire' : '';
+      document.getElementById('tt-lifespan').textContent = lifespan + ' year' + (lifespan !== 1 ? 's' : '') + extra;
+      const tt = document.getElementById('tooltip');
+      tt.style.display = 'block';
+      tt.style.left = Math.min(e.clientX + 12, window.innerWidth - 320) + 'px';
+      tt.style.top = (e.clientY - 60) + 'px';
+    });
+    bar.addEventListener('mousemove', e => {
+      const tt = document.getElementById('tooltip');
+      tt.style.left = Math.min(e.clientX + 12, window.innerWidth - 320) + 'px';
+      tt.style.top = (e.clientY - 60) + 'px';
+    });
+    bar.addEventListener('mouseleave', () => {
+      document.getElementById('tooltip').style.display = 'none';
+    });
+  });
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.controls .filter-btn[data-filter]').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === f);
+  });
+  render();
+}
+
+function setSort(s) {
+  currentSort = s;
+  document.getElementById('sort-open').classList.toggle('active', s === 'opened');
+  document.getElementById('sort-life').classList.toggle('active', s === 'lifespan');
+  document.getElementById('sort-close').classList.toggle('active', s === 'closed');
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
