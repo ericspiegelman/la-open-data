@@ -55,7 +55,7 @@
   <div class="toggle-wrap">
     <button class="toggle-btn active" id="btn-trees" onclick="showTrees()">Every Tree</button>
     <button class="toggle-btn" id="btn-density" onclick="showDensity()">Densest Stretches</button>
-    <button class="toggle-btn" id="btn-locate" onclick="goToMyLocation()">My Location</button>
+    <button class="toggle-btn" id="btn-locate" onclick="goToMyLocation()">Trees Near Me</button>
   </div>
 </div>
 
@@ -198,13 +198,13 @@ function showDensity() {
   document.getElementById('subtitle').innerHTML = "281 street stretches with &ge;10 jacarandas per block &bull; Source: <a href=\"https://data.lacity.org\" target=\"_blank\">data.lacity.org</a> Street Tree Inventory";
 }
 
-// My Location
+// Trees Near Me
 let locMarker = null;
 function goToMyLocation() {
   const btn = document.getElementById('btn-locate');
   btn.textContent = 'Locating...';
   if (!navigator.geolocation) {
-    btn.textContent = 'My Location';
+    btn.textContent = 'Trees Near Me';
     return;
   }
   navigator.geolocation.getCurrentPosition(pos => {
@@ -220,9 +220,9 @@ function goToMyLocation() {
       weight: 2,
       opacity: 1
     }).addTo(map).bindPopup('<div style="font-size:0.85rem;color:#fbbf24;font-weight:700">You are here</div>', { maxWidth: 200 });
-    btn.textContent = 'My Location';
+    btn.textContent = 'Trees Near Me';
   }, () => {
-    btn.textContent = 'My Location';
+    btn.textContent = 'Trees Near Me';
   }, { enableHighAccuracy: true, timeout: 10000 });
 }
 
