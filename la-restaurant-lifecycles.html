@@ -121,6 +121,7 @@
   <button class="filter-btn active" id="sort-open" onclick="setSort('opened')">By opening</button>
   <button class="filter-btn" id="sort-life" onclick="setSort('lifespan')">By lifespan</button>
   <button class="filter-btn" id="sort-close" onclick="setSort('closed')">By closing</button>
+  <button class="filter-btn" id="sort-alpha" onclick="setSort('alpha')">A–Z</button>
   <span class="count-label" id="count-label"></span>
 </div>
 
@@ -356,8 +357,10 @@ function getFiltered() {
     data.sort((a, b) => a[1] - b[1]);
   } else if (currentSort === 'lifespan') {
     data.sort((a, b) => (b[2] - b[1]) - (a[2] - a[1]));
-  } else {
+  } else if (currentSort === 'closed') {
     data.sort((a, b) => a[2] - b[2] || a[1] - b[1]);
+  } else {
+    data.sort((a, b) => a[0].localeCompare(b[0]));
   }
   return data;
 }
@@ -440,6 +443,7 @@ function setSort(s) {
   document.getElementById('sort-open').classList.toggle('active', s === 'opened');
   document.getElementById('sort-life').classList.toggle('active', s === 'lifespan');
   document.getElementById('sort-close').classList.toggle('active', s === 'closed');
+  document.getElementById('sort-alpha').classList.toggle('active', s === 'alpha');
   render();
 }
 
