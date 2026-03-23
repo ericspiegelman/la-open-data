@@ -13,11 +13,10 @@
   .top-bar { padding:16px 24px 10px; position:relative; z-index:1000; }
   h1 { font-size:1.5rem; font-weight:700; color:#f8fafc; letter-spacing:-0.02em; font-family:'Lora',Georgia,'Times New Roman',serif; }
   h1 span { color:#c4b5fd; }
-  .subtitle-row { display:flex; align-items:center; margin-top:2px; }
-  .subtitle { color:#94a3b8; font-size:0.8rem; line-height:1.4; }
+  .subtitle { color:#94a3b8; font-size:0.8rem; line-height:1.4; margin-top:2px; }
   .subtitle a { color:#94a3b8; }
 
-  .toggle-wrap { display:flex; align-items:center; gap:10px; margin-left:80px; flex-shrink:0; }
+  .toggle-wrap { position:fixed; top:16px; right:24px; display:flex; align-items:center; gap:10px; z-index:1001; }
   .toggle-btn {
     padding:6px 14px; border-radius:6px; border:1px solid rgba(196,181,253,0.3);
     background:transparent; color:#94a3b8; font-size:0.78rem; cursor:pointer;
@@ -52,12 +51,10 @@
 
 <div class="top-bar">
   <h1>Almost all of the <span>Jacarandas</span> in Los Angeles</h1>
-  <div class="subtitle-row">
-    <p class="subtitle" id="subtitle">20,460 street trees at 12,917 locations &bull; Geocoded to street address &bull; Source: <a href="https://data.lacity.org" target="_blank">data.lacity.org</a> Street Tree Inventory</p>
-    <div class="toggle-wrap">
-      <button class="toggle-btn active" id="btn-trees" onclick="showTrees()">Every Tree</button>
-      <button class="toggle-btn" id="btn-density" onclick="showDensity()">Densest Stretches</button>
-    </div>
+  <p class="subtitle" id="subtitle">20,460 street trees at 12,917 locations &bull; Geocoded to street address &bull; Source: <a href="https://data.lacity.org" target="_blank">data.lacity.org</a> Street Tree Inventory</p>
+  <div class="toggle-wrap">
+    <button class="toggle-btn active" id="btn-trees" onclick="showTrees()">Every Tree</button>
+    <button class="toggle-btn" id="btn-density" onclick="showDensity()">Densest Stretches</button>
   </div>
 </div>
 
