@@ -32,7 +32,6 @@
 <script>
 const labels = ["1996", "1997", "1998", "1999", "2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"];
 const values = [33180, 37336, 34087, 44596, 46868, 52096, 52042, 57454, 57385, 55008, 55348, 58637, 45240, 45146, 46629, 47164, 48273, 52275, 55932, 60552, 52957, 51492, 55453, 51427, 42565, 44865, 52395, 46932, 38370, 35783];
-const PROVISIONAL_FROM = 29; // index of 2025
 
 const gradient = document.getElementById('chart').getContext('2d');
 const fill = gradient.createLinearGradient(0, 0, 0, 640);
@@ -84,8 +83,7 @@ new Chart(gradient, {
         callbacks: {
           title: ctx => ctx[0].label,
           label: ctx => {
-            let val = ctx.parsed.y.toLocaleString() + ' registrations';
-            if (ctx.dataIndex >= PROVISIONAL_FROM) val += ' (provisional)';
+            const val = ctx.parsed.y.toLocaleString() + ' registrations';
             const idx = ctx.dataIndex;
             if (idx > 0) {
               const prev = values[idx - 1];
